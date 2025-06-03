@@ -3,8 +3,10 @@ This project demonstrates a complete ETL pipeline for a simulated flight booking
 
 ## Table of Contents
 * [Project Overview](#project-overview)
-* [Requirement Gathering and Solutions](#requirement-gathering-and-solutions)
-* [Data Pipeline Design](#data-pipeline-design)
+* [Architecture Overview](#architecture-overview)
+* [Pipeline Flow](#pipeline-flow)
+* [How to Run the Project](#how-to-run-the-project)
+* [Screenshots](#screenshots)
 
 ## Project Overview
 The goal of this project is to build a reliable and automated data pipeline that performs :
@@ -13,7 +15,7 @@ The goal of this project is to build a reliable and automated data pipeline that
 3. Data Transformation from staging to warehouse tables
 4. Workflow orchestration using Airflow with TaskGroups
 
-## Architecture Description
+## Architecture Overview
 ### System Components :
 1. PostgreSQL – as source, staging, and warehouse databases
 2. MinIO – acts as a data lake to store extracted CSVs
@@ -21,7 +23,7 @@ The goal of this project is to build a reliable and automated data pipeline that
 ### Services Diagram :
 ![Services Diagram](assets/service-diagram.png)
 
-## Architecture Description
+## Pipeline Flow
 ### 1. Extract
 - Extracts tables from source PostgreSQL (bookings schema)
 - Stores each table as a CSV file in MinIO at:<br>

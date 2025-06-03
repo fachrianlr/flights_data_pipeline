@@ -81,7 +81,7 @@ static/
 instance/
 
 # Environment variables
-.env
+env
 .flaskenv
 
 # MyPy

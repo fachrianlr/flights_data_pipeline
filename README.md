@@ -46,7 +46,7 @@ The goal of this project is to build a reliable and automated data pipeline that
 git clone https://github.com/yourusername/flights-data-pipeline.git
 cd flights-data-pipeline
 ```
-2. Extract file src-init-db into init.sql
+2. Extract file src-init-db/init.rar into init.sql
 3. Start Docker Compose
 ```bash
 docker compose up -d

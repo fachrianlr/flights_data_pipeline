@@ -1,0 +1,125 @@
+version: '3.8'
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  image: custom/airflow:minio
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__WEBSERVER_DAG_DEFAULT_VIEW: graph
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/dags/scripts:/opt/airflow/dags/scripts
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  networks:
+    - airflow
+
+services:
+  postgres:
+    image: postgres:15.10
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+    networks:
+      - airflow
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: >
+      bash -c "airflow db init &&
+              airflow users create --username ${AIRFLOW_ADMIN_USERNAME} --password ${AIRFLOW_ADMIN_PASSWORD} --firstname ${AIRFLOW_ADMIN_FIRSTNAME} --lastname ${AIRFLOW_ADMIN_LASTNAME} --role ${AIRFLOW_ADMIN_ROLE} --email ${AIRFLOW_ADMIN_EMAIL}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-flower: # Optional monitoring tool
+    <<: *airflow-common
+    command: flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  source-db:
+    image: postgres:15.10
+    container_name: source_db_airflow
+    environment:
+      - POSTGRES_DB=${SRC_POSTGRES_DB}
+      - POSTGRES_USER=${SRC_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${SRC_POSTGRES_PASSWORD}
+    volumes:
+      - ./src-init-db/:/docker-entrypoint-initdb.d/
+    ports:
+      - ${SRC_POSTGRES_PORT}:5432
+    networks:
+      - airflow
+
+  warehouse-db:
+    image: postgres:15.10
+    container_name: warehouse_db_airflow
+    environment:
+      - POSTGRES_DB=${DWH_POSTGRES_DB}
+      - POSTGRES_USER=${DWH_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${DWH_POSTGRES_PASSWORD}
+    volumes:
+      - ./dwh-init-db/:/docker-entrypoint-initdb.d/
+    ports:
+      - ${DWH_POSTGRES_PORT}:5432
+    networks:
+      - airflow
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio_container_airflow
+    restart: no
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ACCESS_KEY}"
+      MINIO_ROOT_PASSWORD: "${MINIO_SECRET_KEY}"
+    command: server --address ":9000" --console-address ":9090" /data
+    ports:
+      - "9001:9000" # API port
+      - "9090:9090" # Console port
+    networks:
+      - airflow
+
+networks:
+  airflow:

@@ -43,7 +43,7 @@ The goal of this project is to build a reliable and automated data pipeline that
 ## How to Run the Project
 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/flights-data-pipeline.git
+git clone https://github.com/fachrianlr/flights-data-pipeline.git
 cd flights-data-pipeline
 ```
 2. Extract file src-init-db/init.rar into init.sql
